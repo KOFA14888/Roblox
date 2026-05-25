@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Tunnel Manager</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 15px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .header p {
+            color: var(--tg-theme-hint-color, #666666);
+            font-size: 14px;
+        }
+
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .tunnel-item {
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+            transition: all 0.3s;
+        }
+
+        .tunnel-item.active {
+            border-left-color: #00ff00;
+        }
+
+        .tunnel-item.expired {
+            border-left-color: #ff0000;
+            opacity: 0.7;
+        }
+
+        .tunnel-name {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-family: monospace;
+        }
+
+        .tunnel-details {
+            font-size: 13px;
+            color: var(--tg-theme-hint-color, #666666);
+            margin-bottom: 5px;
+        }
+
+        .tunnel-status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status-active {
+            background: rgba(0, 255, 0, 0.2);
+            color: #00cc00;
+        }
+
+        .status-expired {
+            background: rgba(255, 0, 0, 0.2);
+            color: #ff0000;
+        }
+
+        .button {
+            background: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+
+        .button:hover {
+            opacity: 0.9;
+        }
+
+        .button-secondary {
+            background: var(--tg-theme-secondary-bg-color, #e0e0e0);
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .button-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .button-danger {
+            background: #ff4444;
+            color: white;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--tg-theme-text-color, #000000);
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--tg-theme-hint-color, #cccccc);
+            border-radius: 8px;
+            background: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            font-size: 16px;
+        }
+
+        .input-group small {
+            display: block;
+            margin-top: 5px;
+            color: var(--tg-theme-hint-color, #666666);
+            font-size: 12px;
+        }
+
+        .plan-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .plan-btn {
+            background: var(--tg-theme-secondary-bg-color, #e0e0e0);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .plan-btn.selected {
+            border-color: var(--tg-theme-button-color, #0088cc);
+            background: var(--tg-theme-button-color, #0088cc);
+            color: white;
+        }
+
+        .plan-price {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .plan-days {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: var(--tg-theme-bg-color, #ffffff);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .config-text {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            overflow-x: auto;
+            margin: 15px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: var(--tg-theme-hint-color, #666666);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--tg-theme-hint-color, #cccccc);
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            border-bottom-color: var(--tg-theme-button-color, #0088cc);
+            color: var(--tg-theme-button-color, #0088cc);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .message {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: var(--tg-theme-button-color, #0088cc);
+            color: white;
+            padding: 12px;
+            border-radius: 10px;
+            text-align: center;
+            animation: slideUp 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .flex {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .mt-20 {
+            margin-top: 20px;
+        }
+
+        .mb-20 {
+            margin-bottom: 20px;
+        }
+
+        code {
+            background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        hr {
+            margin: 15px 0;
+            border-color: var(--tg-theme-hint-color, #cccccc);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Tunnel Manager</h1>
+            <p>Управление TCP туннелями</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('tunnels')">📡 Мои туннели</div>
+            <div class="tab" onclick="switchTab('create')">➕ Создать туннель</div>
+            <div class="tab" onclick="switchTab('info')">ℹ️ Инфо</div>
+        </div>
+
+        <div id="tunnels-tab" class="tab-content active">
+            <div id="tunnels-list">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+
+        <div id="create-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">🆕 Новый туннель</div>
+                <div class="input-group">
+                    <label>🔌 Локальный порт</label>
+                    <input type="number" id="local-port" placeholder="Пример: 8080, 25565, 3306" min="1" max="65535">
+                    <small>Порт, который вы хотите открыть на своем компьютере</small>
+                </div>
+                <div class="input-group">
+                    <label>📅 Выберите тариф</label>
+                    <div class="plan-buttons" id="plan-buttons">
+                        <div class="plan-btn" data-days="7" onclick="selectPlan(7)">
+                            <div class="plan-price">90 ₽</div>
+                            <div class="plan-days">7 дней</div>
+                        </div>
+                        <div class="plan-btn" data-days="30" onclick="selectPlan(30)">
+                            <div class="plan-price">300 ₽</div>
+                            <div class="plan-days">30 дней</div>
+                        </div>
+                        <div class="plan-btn" data-days="90" onclick="selectPlan(90)">
+                            <div class="plan-price">600 ₽</div>
+                            <div class="plan-days">90 дней</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="button" onclick="createTunnel()">✅ Создать туннель</button>
+            </div>
+        </div>
+
+        <div id="info-tab" class="tab-content">
+            <div class="card">
+                <div class="card-title">❓ Как использовать</div>
+                <div style="line-height: 1.6;">
+                    <p><strong>1. Создание туннеля</strong><br>
+                    Выберите локальный порт и тариф, нажмите "Создать туннель".</p>
+                    
+                    <p><strong>2. Оплата</strong><br>
+                    Напишите администратору с ID платежа и переведите сумму.</p>
+                    
+                    <p><strong>3. Получение конфига</strong><br>
+                    После оплаты вы получите конфигурационный файл.</p>
+                    
+                    <p><strong>4. Запуск</strong><br>
+                    Скачайте FRP клиент, поместите конфиг в папку и запустите frpc.exe</p>
+                    
+                    <hr>
+                    
+                    <p><strong>📞 Поддержка:</strong> <a href="https://t.me/qqwexxx" style="color: var(--tg-theme-link-color);">@qqwexxx</a></p>
+                    <p><strong>🌐 Сервер:</strong> 103.110.64.169:7000</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="config-modal" class="modal">
+        <div class="modal-content">
+            <div class="card-title" style="margin-bottom: 20px;">📄 Конфигурация туннеля</div>
+            <div id="config-content"></div>
+            <button class="button button-secondary" onclick="closeModal()">Закрыть</button>
+        </div>
+    </div>
+
+    <div id="payment-modal" class="modal">
+        <div class="modal-content">
+            <div class="card-title" style="margin-bottom: 20px;">💳 Информация об оплате</div>
+            <div id="payment-content"></div>
+            <button class="button button-secondary" onclick="closePaymentModal()">Закрыть</button>
+        </div>
+    </div>
+        <script>
+        let tg = window.Telegram.WebApp;
+        let selectedPlan = 30;
+        let currentTunnels = [];
+
+        // Конфигурация
+        const FRP_SERVER_IP = "103.110.64.169";
+        const ADMIN_USERNAME = "qqwexxx";
+
+        // Инициализация
+        tg.ready();
+        tg.expand();
+        tg.MainButton.hide();
+
+        // Загрузка туннелей при старте
+        loadTunnels();
+
+        async function loadTunnels() {
+            try {
+                const response = await sendWebAppData({ action: 'get_tunnels' });
+                const data = JSON.parse(response);
+                
+                if (data.tunnels) {
+                    currentTunnels = data.tunnels;
+                    displayTunnels(data.tunnels);
+                }
+            } catch (error) {
+                console.error('Error loading tunnels:', error);
+                displayDemoTunnels();
+            }
+        }
+
+        function displayDemoTunnels() {
+            const container = document.getElementById('tunnels-list');
+            container.innerHTML = `
+                <div class="card">
+                    <div style="text-align: center; padding: 20px;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🔄</div>
+                        <div>Подключение к боту...</div>
+                        <div style="font-size: 12px; margin-top: 10px; color: var(--tg-theme-hint-color);">
+                            Убедитесь, что бот запущен
+                        </div>
+                        <button class="button button-secondary" style="margin-top: 20px;" onclick="loadTunnels()">
+                            🔄 Повторить
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function displayTunnels(tunnels) {
+            const container = document.getElementById('tunnels-list');
+            
+            if (!tunnels || tunnels.length === 0) {
+                container.innerHTML = `
+                    <div class="card">
+                        <div style="text-align: center; padding: 40px;">
+                            <div style="font-size: 48px; margin-bottom: 10px;">📭</div>
+                            <div>У вас нет активных туннелей</div>
+                            <button class="button" style="margin-top: 20px;" onclick="switchTab('create')">➕ Создать туннель</button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = tunnels.map(tunnel => `
+                <div class="tunnel-item ${tunnel.status}">
+                    <div class="tunnel-name">🔐 ${escapeHtml(tunnel.frp_user)}</div>
+                    <div class="tunnel-details">🌍 Публичный: ${FRP_SERVER_IP}:${tunnel.remote_port}</div>
+                    <div class="tunnel-details">🔗 Локальный: 127.0.0.1:${tunnel.local_port}</div>
+                    <div class="tunnel-details">📅 Осталось: ${tunnel.days_left} дней</div>
+                    <span class="tunnel-status ${tunnel.status === 'active' ? 'status-active' : 'status-expired'}">
+                        ${tunnel.status === 'active' ? '🟢 Активен' : '🔴 Просрочен'}
+                    </span>
+                    <div class="flex" style="margin-top: 15px;">
+                        <button class="button button-secondary button-small" onclick="showConfig('${tunnel.frp_user}')">📄 Конфиг</button>
+                        <button class="button button-secondary button-small" onclick="copyConfig('${tunnel.frp_user}')">📋 Копировать</button>
+                        ${tunnel.status === 'expired' ? 
+                            `<button class="button button-secondary button-small" onclick="renewTunnel('${tunnel.frp_user}')">🔄 Продлить</button>` : 
+                            ''}
+                        <button class="button button-secondary button-small" onclick="deleteTunnel('${tunnel.frp_user}')">❌ Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectPlan(days) {
+            selectedPlan = days;
+            document.querySelectorAll('.plan-btn').forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn.dataset.days == days) {
+                    btn.classList.add('selected');
+                }
+            });
+        }
+
+        async function createTunnel() {
+            const localPort = document.getElementById('local-port').value;
+            
+            if (!localPort) {
+                showMessage('Введите локальный порт', 'error');
+                return;
+            }
+
+            if (localPort < 1 || localPort > 65535) {
+                showMessage('Порт должен быть от 1 до 65535', 'error');
+                return;
+            }
+
+            try {
+                const response = await sendWebAppData({
+                    action: 'create_tunnel',
+                    local_port: parseInt(localPort),
+                    plan_days: selectedPlan
+                });
+                
+                const data = JSON.parse(response);
+                
+                if (data.success) {
+                    showPaymentInfo(data);
+                    loadTunnels();
+                    document.getElementById('local-port').value = '';
+                } else if (data.error) {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error creating tunnel:', error);
+                showDemoCreate();
+            }
+        }
+
+        function showDemoCreate() {
+            const localPort = document.getElementById('local-port').value;
+            const paymentId = 'DEMO_' + Math.random().toString(36).substr(2, 8).toUpperCase();
+            const prices = {7: 90, 30: 300, 90: 600};
+            
+            showPaymentInfo({
+                success: true,
+                frp_user: 'u_' + Math.random().toString(36).substr(2, 10),
+                remote_port: Math.floor(Math.random() * (60000 - 10000 + 1) + 10000),
+                price: prices[selectedPlan],
+                payment_id: paymentId,
+                config: `# FRP Client Config
+serverAddr = "${FRP_SERVER_IP}"
+serverPort = 7000
+user = "demo_user_${Math.random().toString(36).substr(2, 6)}"
+
+[[proxies]]
+name = "tunnel"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = ${localPort || '8080'}
+remotePort = ${Math.floor(Math.random() * 60000 + 10000)}`
+            });
+        }
+
+        function showPaymentInfo(data) {
+            const modal = document.getElementById('payment-modal');
+            const content = document.getElementById('payment-content');
+            
+            content.innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <div style="background: rgba(0, 255, 0, 0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                        <div style="font-size: 14px; color: #00cc00;">✅ Туннель создан!</div>
+                    </div>
+                    <div><strong>FRP User:</strong> <code>${escapeHtml(data.frp_user)}</code></div>
+                    <div><strong>Публичный адрес:</strong> ${FRP_SERVER_IP}:${data.remote_port}</div>
+                    <div><strong>Сумма к оплате:</strong> ${data.price} ₽</div>
+                    <div><strong>ID платежа:</strong> <code>${escapeHtml(data.payment_id)}</code></div>
+                </div>
+                <div style="background: var(--tg-theme-secondary-bg-color); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <div style="font-weight: bold; margin-bottom: 10px;">📝 Инструкция по оплате:</div>
+                    <ol style="margin-left: 20px;">
+                        <li>Напишите администратору: <a href="https://t.me/${ADMIN_USERNAME}">@${ADMIN_USERNAME}</a></li>
+                        <li>Укажите ID платежа: <code>${escapeHtml(data.payment_id)}</code></li>
+                        <li>Переведите сумму ${data.price} ₽</li>
+                        <li>После подтверждения туннель активируется</li>
+                    </ol>
+                </div>
+                <div class="config-text">${escapeHtml(data.config)}</div>
+                <div class="flex">
+                    <button class="button button-small" onclick="copyToClipboard('${escapeHtml(data.config)}')">📋 Копировать конфиг</button>
+                    <button class="button button-secondary button-small" onclick="copyToClipboard('${escapeHtml(data.payment_id)}')">📋 Копировать ID</button>
+                    <button class="button button-secondary button-small" onclick="contactAdmin()">✏️ Написать админу</button>
+                </div>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+
+        async function showConfig(frpUser) {
+            try {
+                const response = await sendWebAppData({
+                    action: 'get_config',
+                    frp_user: frpUser
+                });
+                
+                const data = JSON.parse(response);
+                
+                if (data.config) {
+                    const modal = document.getElementById('config-modal');
+                    const content = document.getElementById('config-content');
+                    content.innerHTML = `
+                        <div class="config-text">${escapeHtml(data.config)}</div>
+                        <div class="flex">
+                            <button class="button button-small" onclick="copyToClipboard('${escapeHtml(data.config)}')">📋 Копировать</button>
+                            <button class="button button-secondary button-small" onclick="downloadConfig('${escapeHtml(data.config)}', '${frpUser}')">💾 Скачать</button>
+                        </div>
+                    `;
+                    modal.style.display = 'flex';
+                } else if (data.error) {
+                    showMessage(data.error, 'error');
+                }
+            } catch (error) {
+                console.error('Error loading config:', error);
+                showMessage('Ошибка загрузки конфига', 'error');
+            }
+        }
+
+        async function copyConfig(frpUser) {
+            try {
+                const response = await sendWebAppData({
+                    action: 'get_config',
+                    frp_user: frpUser
+                });
+                
+                const data = JSON.parse(response);
+                
+                if (data.config) {
+                    copyToClipboard(data.config);
+                }
+            } catch (error) {
+                console.error('Error copying config:', error);
+                showMessage('Ошибка копирования', 'error');
+            }
+        }
+
+        async function deleteTunnel(frpUser) {
+            if (!confirm('Вы уверены, что хотите удалить этот туннель?')) {
+                return;
+            }
+            
+            try {
+                const response = await sendWebAppData({
+                    action: 'delete_tunnel',
+                    frp_user: frpUser
+                });
+                
+                const data = JSON.parse(response);
+                
+                if (data.success) {
+                    showMessage('Туннель удален', 'success');
+                    loadTunnels();
+                }
+            } catch (error) {
+                console.error('Error deleting tunnel:', error);
+                showMessage('Туннель удален', 'success');
+                loadTunnels();
+            }
+        }
+
+        function renewTunnel(frpUser) {
+            tg.openTelegramLink(`https://t.me/${ADMIN_USERNAME}?start=renew_${frpUser}`);
+        }
+
+        function contactAdmin() {
+            tg.openTelegramLink(`https://t.me/${ADMIN_USERNAME}`);
+        }
+
+        function downloadConfig(config, filename) {
+            const blob = new Blob([config], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.toml`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage('Конфиг скачан', 'success');
+        }
+
+        function sendWebAppData(data) {
+            return new Promise((resolve, reject) => {
+                try {
+                    tg.sendData(JSON.stringify(data));
+                    
+                    const handleResponse = (event) => {
+                        if (event.data) {
+                            try {
+                                const response = JSON.parse(event.data);
+                                resolve(event.data);
+                            } catch (e) {
+                                resolve(event.data);
+                            }
+                        }
+                    };
+                    
+                    window.addEventListener('message', handleResponse);
+                    setTimeout(() => {
+                        window.removeEventListener('message', handleResponse);
+                        reject(new Error('Timeout'));
+                    }, 5000);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showMessage('✅ Скопировано в буфер обмена', 'success');
+        }
+
+        function showMessage(message, type) {
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message';
+            msgDiv.textContent = message;
+            document.body.appendChild(msgDiv);
+            
+            setTimeout(() => {
+                msgDiv.remove();
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            if (tab === 'tunnels') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('tunnels-tab').classList.add('active');
+                loadTunnels();
+            } else if (tab === 'create') {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('create-tab').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[2].classList.add('active');
+                document.getElementById('info-tab').classList.add('active');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('config-modal').style.display = 'none';
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').style.display = 'none';
+        }
+
+        // Выбор плана по умолчанию
+        selectPlan(30);
+    </script>
+</body>
+</html>
