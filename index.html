@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Быстрый Тест</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            padding: 20px;
+            margin: 0;
+        }
+        .question {
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: var(--tg-theme-button-color, #2481cc);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 16px;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Пройдите мини-тест</h2>
+    
+    <div class="question">
+        <label for="q1">1. Сколько бит в одном байте?</label>
+        <select id="q1">
+            <option value="4">4</option>
+            <option value="8">8</option>
+            <option value="16">16</option>
+        </select>
+    </div>
+
+    <div class="question">
+        <label for="q2">2. Какой язык мы используем для этого бота?</label>
+        <select id="q2">
+            <option value="PHP">PHP</option>
+            <option value="Python">Python</option>
+            <option value="Java">Java</option>
+        </select>
+    </div>
+
+    <button id="send_btn">Завершить тест</button>
+
+    <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Расширяем на все окно
+
+        document.getElementById('send_btn').addEventListener('click', () => {
+            const q1 = document.getElementById('q1').value;
+            const q2 = document.getElementById('q2').value;
+
+            // Считаем правильные ответы
+            let score = 0;
+            if (q1 === "8") score++;
+            if (q2 === "Python") score++;
+
+            // Формируем данные для отправки в бот
+            const data = {
+                score: score,
+                total: 2,
+                answers: { q1, q2 }
+            };
+
+            // Отправляем данные обратно в бота (работает только если WebApp открыт через инлайн-кнопку)
+            tg.sendData(JSON.stringify(data));
+            tg.close(); // Закрываем веб-приложение
+        });
+    </script>
+</body>
+</html>
